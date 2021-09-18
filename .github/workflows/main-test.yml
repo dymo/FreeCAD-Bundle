@@ -1,0 +1,38 @@
+name: Test FreeCAD bundeling
+on: [workflow_dispatch]
+
+jobs:
+  build-test-bundles:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      max-parallel: 3
+      matrix:
+        os: [ubuntu-latest]
+        tag: ["test-builds"]
+        docs: ["0"]
+
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout
+
+      - uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+
+      - if: matrix.os == 'ubuntu-latest'
+        name: update linux
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y desktop-file-utils jq zsync;
+          apt-get download libc6;
+          dpkg -x libc6*.deb libc6;
+          curl -LO https://raw.githubusercontent.com/AppImage/AppImages/master/pkg2appimage;
+          curl -LO https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage;
+          chmod a+x appimagetool-x86_64.AppImage;
+
+      - if: matrix.os == 'ubuntu-latest'
+        name: create linux bundle
+        run: "bash ./create_bundle.sh"
+        working-directory: conda/linux
+        env:
+            DEPLOY_RELEASE: ${{ matrix.tag }}
+            ADD_DOCS: ${{ matrix.docs }}
